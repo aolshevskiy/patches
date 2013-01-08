@@ -1,0 +1,53 @@
+diff -ru oracle-xe.orig/oracle.install oracle-xe/oracle.install
+--- oracle-xe.orig/oracle.install	2012-07-13 04:36:56.000000000 +0300
++++ oracle-xe/oracle.install	2012-11-21 10:45:58.043345990 +0300
+@@ -38,7 +38,20 @@
+ 		chown -R oracle:dba /var/log/oracle
+ 		echo "done"
+ 		echo
+-	fi 
++	fi
++
++	availphymem=`cat /proc/meminfo | grep '^MemTotal' | awk '{print $2}'`
++	availphymem=`echo $availphymem / 1024 | bc`
++	memory_target=`echo 0.40 \* $availphymem | bc | sed "s/\..*//"`
++	if [ $memory_target -gt 1024 ];
++	then
++		memory_target=`echo 1024 \* 1048576 | bc`
++	else
++		memory_target=`echo $memory_target \* 1048576 | bc`
++	fi
++
++	/bin/sed -i "s/%memory_target%/$memory_target/g" /usr/lib/oracle/product/11.2.0/xe/config/scripts/init.ora
++	/bin/sed -i "s/%memory_target%/$memory_target/g" /usr/lib/oracle/product/11.2.0/xe/config/scripts/initXETemp.ora
+ 
+ 	echo
+ 	echo "add your user to the \"dba\" group in order to use the oracle tools"
+diff -ru oracle-xe.orig/PKGBUILD oracle-xe/PKGBUILD
+--- oracle-xe.orig/PKGBUILD	2012-07-13 14:00:44.000000000 +0300
++++ oracle-xe/PKGBUILD	2012-11-21 10:46:35.320018599 +0300
+@@ -2,7 +2,7 @@
+ 
+ pkgname=oracle-xe
+ pkgver=11.2.0_1.0
+-pkgrel=1
++pkgrel=2
+ pkgdesc="a non free DBMS"
+ url="http://www.oracle.com/"
+ license=('custom')
+@@ -10,7 +10,7 @@
+ conflicts=('oracle-xe')
+ provides=('oracle-xe')
+ options=('!strip')
+-depends=('libaio>=0.3.104' 'gcc>=4.1.2' 'binutils>=2.16.91.0.5' 'make>=3.80' 'glibc>=2.3.4-2.41')
++depends=('libaio>=0.3.104' 'gcc>=4.1.2' 'binutils>=2.16.91.0.5' 'make>=3.80' 'glibc>=2.3.4-2.41' 'bc' 'net-tools')
+ makedepends=('rpmextract')
+ install='oracle.install'
+ source=('http://download/file/from/oracle/page/oracle-xe-11.2.0-1.0.x86_64.rpm.zip'
+@@ -59,4 +59,6 @@
+     # License
+     mkdir -p $pkgdir/usr/share/licenses/custom/$pkgname
+     cp $srcdir/usr/share/doc/oracle_xe/LICENSE $pkgdir/usr/share/licenses/custom/$pkgname
++
++    sed -i 's/\/u01\/app/\/usr\/lib/g' $pkgdir/usr/lib/oracle/product/11.2.0/xe/config/scripts/*
+ }
